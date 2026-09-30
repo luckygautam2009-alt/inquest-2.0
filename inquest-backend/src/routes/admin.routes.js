@@ -13,4 +13,7 @@ router.post('/profile', requireAdminPassword, getOrCreateProfile);
 router.post('/profile/photo', requireAdminPassword, updateProfilePhoto);
 router.post('/profile/name', requireAdminPassword, updateProfileName);
 
+const { getAuditLog } = require('../controllers/audit.controller');
+router.post('/audit', requireAdminPassword, getAuditLog);
+
 module.exports = router;

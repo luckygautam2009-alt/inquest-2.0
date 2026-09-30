@@ -5,6 +5,8 @@ const { decide } = require('../services/decisionEngine');
 const { buildHandoff } = require('../services/handoffEngine');
 const { buildEvidenceGraph } = require('../services/graphBuilder');
 const dataStore = require('../services/dataStore');
+const audit = require('../services/auditService');
+const { executeActions } = require('../services/actionExecutor');
 
 async function submitComplaint(req, res) {
   const { complaintText, customerId } = req.body;
@@ -56,6 +58,9 @@ async function submitComplaint(req, res) {
   ]);
   const handoffMs = Date.now() - tHandoffStart;
 
+  const actions = executeActions({ customerId, analysis, rootCause, decision, investigation });
+  const auditId = audit.logDecision({ customerId, complaintText, analysis, rootCause, decision, investigation, actions });
+
   const totalMs = Date.now() - totalStart;
 
   console.log(
@@ -73,6 +78,8 @@ async function submitComplaint(req, res) {
       decision,
       handoff,
       evidenceGraph,
+      auditId,
+      actions,
     },
   });
 }
