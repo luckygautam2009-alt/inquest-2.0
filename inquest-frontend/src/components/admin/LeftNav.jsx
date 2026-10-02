@@ -8,6 +8,8 @@ import {
   BookOpen,
   CheckCircle2,
   ShieldCheck,
+  TrendingUp,
+  FileText,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -18,6 +20,8 @@ const NAV_ITEMS = [
   { id: 'tickets', label: 'Tickets', icon: Ticket },
   { id: 'securityEvents', label: 'Security Events', icon: ShieldAlert },
   { id: 'policies', label: 'Policies', icon: BookOpen },
+  { id: 'analytics', label: 'Analytics (2.0)', icon: TrendingUp },
+  { id: 'auditlog', label: 'Audit Log (2.0)', icon: FileText },
 ];
 
 export default function LeftNav({ activeTable, setActiveTable, data }) {
@@ -30,7 +34,7 @@ export default function LeftNav({ activeTable, setActiveTable, data }) {
             Database Tables
           </span>
           <span className="text-[10px] font-mono text-muted/80 bg-ink-inset px-1.5 py-0.5 rounded border border-border">
-            7 tables
+            9 views
           </span>
         </div>
 

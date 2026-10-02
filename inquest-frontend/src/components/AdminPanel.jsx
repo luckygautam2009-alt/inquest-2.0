@@ -27,6 +27,8 @@ import LeftNav from './admin/LeftNav';
 import StatCards from './admin/StatCards';
 import DataTable from './admin/DataTable';
 import ProfileSidebar from './admin/ProfileSidebar';
+import AnalyticsView from './admin/AnalyticsView';
+import AuditLogView from './admin/AuditLogView';
 
 export default function AdminPanel({ onClose }) {
   // Theme hook shared with the entire application
@@ -88,6 +90,13 @@ export default function AdminPanel({ onClose }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function refreshOverview() {
+    try {
+      const r = await getAdminOverview(password);
+      setData(r.data);
+    } catch { /* keep stale data if refresh fails */ }
   }
 
   async function handleUpdatePhoto(photoBase64) {
@@ -268,16 +277,29 @@ export default function AdminPanel({ onClose }) {
 
           {/* Center Main Content Area */}
           <main className="flex-1 flex flex-col p-3.5 sm:p-4.5 overflow-y-auto min-w-0 bg-ink transition-colors">
-            {/* Real KPI Statistics */}
-            <StatCards data={data} />
+            {activeTable === 'analytics' ? (
+              <AnalyticsView adminPassword={password} />
+            ) : activeTable === 'auditlog' ? (
+              <AuditLogView
+                adminPassword={password}
+                adminName={adminProfile?.name || name}
+                adminEmail={email}
+                onChanged={refreshOverview}
+              />
+            ) : (
+              <>
+                {/* Real KPI Statistics */}
+                <StatCards data={data} />
 
-            {/* Dense Data Table */}
-            <DataTable
-              activeTable={activeTable}
-              data={data}
-              searchQuery={globalSearch}
-              setSearchQuery={setGlobalSearch}
-            />
+                {/* Dense Data Table */}
+                <DataTable
+                  activeTable={activeTable}
+                  data={data}
+                  searchQuery={globalSearch}
+                  setSearchQuery={setGlobalSearch}
+                />
+              </>
+            )}
           </main>
 
           {/* Right Profile & Activity Sidebar */}
