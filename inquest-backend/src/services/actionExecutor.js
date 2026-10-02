@@ -4,6 +4,7 @@ const R = {
   dup: 'Duplicate payment refund (POLICY7)',
   recon: 'Reconciliation refund: gateway debit without local order (POLICY1)',
   ret: 'Refund for return received at warehouse (POLICY4)',
+  dmg: 'Photo-verified damaged item refund (POLICY6)',
 };
 
 function nextId(table, prefix) {
@@ -79,7 +80,7 @@ function executeActions({ customerId, analysis, rootCause, decision, investigati
       }
       if (d !== 'AUTO_RESOLVE') return;
 
-      const moneyPolicy = ['POLICY7', 'POLICY1', 'POLICY4'].includes(policy);
+      const moneyPolicy = ['POLICY7', 'POLICY1', 'POLICY4', 'POLICY6'].includes(policy);
       if (moneyPolicy && (!order || order.customerId !== customerId)) {
         result.skipped = 'ORDER_NOT_VERIFIED_FOR_CUSTOMER';
         return;
@@ -104,6 +105,9 @@ function executeActions({ customerId, analysis, rootCause, decision, investigati
       } else if (policy === 'POLICY4') {
         if (anyRefundCount(order.id, customerId) > 0) result.skipped = 'REFUND_ALREADY_EXISTS';
         else spec = { amount: order.amount, reason: R.ret, gatewayRef: null };
+      } else if (policy === 'POLICY6') {
+        if (anyRefundCount(order.id, customerId) > 0) result.skipped = 'REFUND_ALREADY_EXISTS';
+        else spec = { amount: order.amount, reason: R.dmg, gatewayRef: null };
       }
 
       if (result.skipped) return;

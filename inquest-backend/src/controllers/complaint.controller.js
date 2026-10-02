@@ -8,6 +8,7 @@ const dataStore = require('../services/dataStore');
 const audit = require('../services/auditService');
 const { executeActions } = require('../services/actionExecutor');
 const { computeRisk } = require('../services/riskEngine');
+const { assessPhotos } = require('../services/photoEvidenceService');
 
 async function submitComplaint(req, res) {
   const { complaintText, customerId } = req.body;
@@ -49,7 +50,18 @@ async function submitComplaint(req, res) {
   // 4. Decision engine
   const tDecStart = Date.now();
   const risk = computeRisk(customerId);
-  const decision = decide(complaintText, analysis, rootCause, investigation, risk);
+
+  // 3b. Photo evidence (2.0): hash check + vision claims, only for physical-product claims
+  const files = req.files || [];
+  const physicalClaim =
+    ['product_issue', 'product_quality'].includes(analysis.intent) ||
+    ['POLICY6', 'POLICY8'].includes(rootCause.matchedPolicy);
+  let photo = { provided: files.length, analyzed: false, vision: null, reuse: { detected: false, detail: null }, hashes: [], error: null };
+  if (files.length && physicalClaim) {
+    photo = await assessPhotos({ files, customerId, order: investigation.focusOrder, complaintText });
+  }
+
+  const decision = decide(complaintText, analysis, rootCause, investigation, risk, photo);
   const decisionMs = Date.now() - tDecStart;
 
   // 5. Handoff generation & Evidence graph construction (run in parallel)
@@ -61,7 +73,7 @@ async function submitComplaint(req, res) {
   const handoffMs = Date.now() - tHandoffStart;
 
   const actions = executeActions({ customerId, analysis, rootCause, decision, investigation });
-  const auditId = audit.logDecision({ customerId, complaintText, analysis, rootCause, decision, investigation, actions, risk });
+  const auditId = audit.logDecision({ customerId, complaintText, analysis, rootCause, decision, investigation, actions, risk, photo });
 
   const totalMs = Date.now() - totalStart;
 
@@ -83,6 +95,7 @@ async function submitComplaint(req, res) {
       auditId,
       actions,
       risk,
+      photo,
     },
   });
 }
