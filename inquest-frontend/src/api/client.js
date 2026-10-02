@@ -154,3 +154,10 @@ export const getAuditLog = ({ adminPassword, limit = 100 }) => adminPost('/admin
 export const overrideDecision = (payload) => adminPost('/admin/override', payload);
 export const getAnalytics = ({ adminPassword }) => adminPost('/admin/analytics', { adminPassword });
 export const getRiskBoard = ({ adminPassword }) => adminPost('/admin/risk', { adminPassword });
+
+// ── Live demo store ──
+export const getShopProducts = () => request('/shop/products');
+export const placeShopOrder = (payload) => request('/shop/orders', { method: 'POST', body: JSON.stringify(payload) });
+export const getShopOrders = (customerId) => request(`/shop/orders/${customerId}`);
+export const simulateShopOrder = (orderId, customerId, action) =>
+  request(`/shop/orders/${orderId}/simulate`, { method: 'POST', body: JSON.stringify({ customerId, action }) });

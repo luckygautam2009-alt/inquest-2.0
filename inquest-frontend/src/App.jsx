@@ -7,7 +7,8 @@ import LoadingSkeleton from './components/LoadingSkeleton';
 import { useTheme } from './hooks/useTheme';
 import AdminPanel from './components/AdminPanel';
 import StoryPage from './pages/StoryPage';
-import { Scale, Activity, ChevronRight, Sun, Moon, ShieldCheck, Sparkles } from 'lucide-react';
+import StorePage from './pages/StorePage';
+import { Scale, Activity, ChevronRight, Sun, Moon, ShieldCheck, Sparkles, ShoppingBag } from 'lucide-react';
 import logoMark from './assets/logo-mark.png';
 
 export default function App() {
@@ -17,12 +18,31 @@ export default function App() {
   const [error, setError] = useState(null);
   const { theme, toggleTheme } = useTheme();
   const [showAdmin, setShowAdmin] = useState(false);
+  const [prefill, setPrefill] = useState(null);
 
   useEffect(() => {
     const handlePopState = () => setRoute(window.location.pathname);
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  if (route === '/store') {
+    return (
+      <StorePage
+        onBack={() => {
+          window.history.pushState({}, '', '/');
+          setRoute('/');
+        }}
+        onReport={(p) => {
+          setPrefill({ ...p, key: Date.now() });
+          setResult(null);
+          setError(null);
+          window.history.pushState({}, '', '/');
+          setRoute('/');
+        }}
+      />
+    );
+  }
 
   if (route === '/story') {
     return (
@@ -76,6 +96,20 @@ export default function App() {
                 <span className="text-verified font-bold">Investigation Complete</span>
               </div>
             )}
+
+            {/* Live Store button */}
+            <button
+              type="button"
+              onClick={() => {
+                window.history.pushState({}, '', '/store');
+                setRoute('/store');
+              }}
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-verified-dim hover:bg-verified-dim/80 border border-verified/40 text-verified text-xs sm:text-sm font-semibold transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.98]"
+              title="Open the live demo store"
+            >
+              <ShoppingBag className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">Live Store</span>
+            </button>
 
             {/* See how it works button */}
             <button
@@ -162,7 +196,7 @@ export default function App() {
           {/* ── Left: Intake form ── */}
           <aside className="lg:self-start lg:sticky lg:top-28 space-y-6">
             <div className="rounded-2xl border border-border-strong p-6 sm:p-7 bg-ink-light shadow-md backdrop-blur-xs">
-              <ComplaintForm onSubmit={handleSubmit} loading={loading} />
+              <ComplaintForm key={prefill?.key || 'default'} onSubmit={handleSubmit} loading={loading} prefill={prefill} />
             </div>
 
             {/* How it works — visible when idle */}

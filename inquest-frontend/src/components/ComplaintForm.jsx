@@ -30,10 +30,10 @@ const SAMPLE_COMPLAINTS = [
   },
 ];
 
-export default function ComplaintForm({ onSubmit, loading }) {
+export default function ComplaintForm({ onSubmit, loading, prefill }) {
   const [customers, setCustomers] = useState(FALLBACK_CUSTOMERS);
-  const [customerId, setCustomerId] = useState('CUST001');
-  const [complaintText, setComplaintText] = useState('');
+  const [customerId, setCustomerId] = useState(prefill?.customerId || 'CUST001');
+  const [complaintText, setComplaintText] = useState(prefill?.text || '');
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -46,7 +46,7 @@ export default function ComplaintForm({ onSubmit, loading }) {
   const [orderLocalStatus, setOrderLocalStatus] = useState('success');
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
-  const [charCount, setCharCount] = useState(0);
+  const [charCount, setCharCount] = useState(prefill?.text ? prefill.text.length : 0);
   const [photos, setPhotos] = useState([]);
   const [photoError, setPhotoError] = useState(null);
 

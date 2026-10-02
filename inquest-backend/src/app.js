@@ -11,6 +11,7 @@ const contextRoutes = require('./routes/context.routes');
 const complaintRoutes = require('./routes/complaint.routes');
 const verificationRoutes = require('./routes/verification.routes');
 const adminRoutes = require('./routes/admin.routes');
+const shopRoutes = require('./routes/shop.routes');
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use('/api/customers', contextRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/verify', verificationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/shop', shopRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
