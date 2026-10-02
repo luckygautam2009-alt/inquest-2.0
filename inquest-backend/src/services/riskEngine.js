@@ -17,7 +17,7 @@ function computeRisk(customerId) {
   if (!customer) return null;
 
   const orders = db.prepare('SELECT amount FROM orders WHERE customerId=?').all(customerId);
-  const refunds = db.prepare('SELECT amount, reason, initiatedAt FROM refunds WHERE customerId=?')
+  const refunds = db.prepare("SELECT amount, reason, initiatedAt FROM refunds WHERE customerId=? AND status != 'cancelled'")
     .all(customerId).filter((r) => !SYSTEM_REASON.test(r.reason || ''));
   const tickets = db.prepare('SELECT category, subject, status, date FROM tickets WHERE customerId=?').all(customerId);
   const flagged = db.prepare('SELECT COUNT(*) AS n FROM security_events WHERE customerId=? AND flagged=1').get(customerId).n;

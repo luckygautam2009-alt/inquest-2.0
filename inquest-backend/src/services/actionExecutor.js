@@ -18,12 +18,12 @@ function nextId(table, prefix) {
 const isSuccess = (p) => p.status === 'success' || p.gatewayStatus === 'success';
 
 function refundCount(orderId, customerId, reason) {
-  return db.prepare('SELECT COUNT(*) AS n FROM refunds WHERE orderId=? AND customerId=? AND reason=?')
+  return db.prepare("SELECT COUNT(*) AS n FROM refunds WHERE orderId=? AND customerId=? AND reason=? AND status != 'cancelled'")
     .get(orderId, customerId, reason).n;
 }
 
 function anyRefundCount(orderId, customerId) {
-  return db.prepare('SELECT COUNT(*) AS n FROM refunds WHERE orderId=? AND customerId=?')
+  return db.prepare("SELECT COUNT(*) AS n FROM refunds WHERE orderId=? AND customerId=? AND status != 'cancelled'")
     .get(orderId, customerId).n;
 }
 
@@ -139,4 +139,4 @@ function executeActions({ customerId, analysis, rootCause, decision, investigati
   return result;
 }
 
-module.exports = { executeActions };
+module.exports = { executeActions, createTicket };

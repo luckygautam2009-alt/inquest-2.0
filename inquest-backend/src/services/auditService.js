@@ -112,4 +112,14 @@ function verifyChain() {
   return { valid: true, total: rows.length };
 }
 
-module.exports = { logDecision, append, list, verifyChain };
+function get(id) {
+  const r = db.prepare('SELECT * FROM audit_log WHERE id=?').get(id);
+  if (!r) return null;
+  return { ...r, evidence: r.evidence ? JSON.parse(r.evidence) : null, actions: r.actions ? JSON.parse(r.actions) : null };
+}
+
+function overridesFor(refId) {
+  return db.prepare("SELECT id FROM audit_log WHERE entryType='OVERRIDE' AND refId=?").all(refId);
+}
+
+module.exports = { logDecision, append, list, verifyChain, get, overridesFor };

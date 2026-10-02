@@ -19,4 +19,8 @@ router.post('/audit', requireAdminPassword, getAuditLog);
 const { getRiskBoard } = require('../controllers/risk.controller');
 router.post('/risk', requireAdminPassword, getRiskBoard);
 
+const { overrideDecision, analytics } = require('../controllers/override.controller');
+router.post('/override', requireAdminPassword, overrideDecision);
+router.post('/analytics', requireAdminPassword, analytics);
+
 module.exports = router;
