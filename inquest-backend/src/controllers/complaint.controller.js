@@ -7,6 +7,7 @@ const { buildEvidenceGraph } = require('../services/graphBuilder');
 const dataStore = require('../services/dataStore');
 const audit = require('../services/auditService');
 const { executeActions } = require('../services/actionExecutor');
+const { computeRisk } = require('../services/riskEngine');
 
 async function submitComplaint(req, res) {
   const { complaintText, customerId } = req.body;
@@ -47,7 +48,8 @@ async function submitComplaint(req, res) {
 
   // 4. Decision engine
   const tDecStart = Date.now();
-  const decision = decide(complaintText, analysis, rootCause, investigation);
+  const risk = computeRisk(customerId);
+  const decision = decide(complaintText, analysis, rootCause, investigation, risk);
   const decisionMs = Date.now() - tDecStart;
 
   // 5. Handoff generation & Evidence graph construction (run in parallel)
@@ -59,7 +61,7 @@ async function submitComplaint(req, res) {
   const handoffMs = Date.now() - tHandoffStart;
 
   const actions = executeActions({ customerId, analysis, rootCause, decision, investigation });
-  const auditId = audit.logDecision({ customerId, complaintText, analysis, rootCause, decision, investigation, actions });
+  const auditId = audit.logDecision({ customerId, complaintText, analysis, rootCause, decision, investigation, actions, risk });
 
   const totalMs = Date.now() - totalStart;
 
@@ -80,6 +82,7 @@ async function submitComplaint(req, res) {
       evidenceGraph,
       auditId,
       actions,
+      risk,
     },
   });
 }

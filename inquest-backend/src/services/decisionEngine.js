@@ -16,7 +16,7 @@ const PHYSICAL_VERIFICATION_INTENTS = [
   'product_quality',
 ];
 
-function decide(complaintText, analysis, rootCause, investigation) {
+function decide(complaintText, analysis, rootCause, investigation, risk) {
   const { confidence, matchedPolicy } = rootCause;
   const intent = analysis.intent;
   const subIntent = analysis.subIntent;
@@ -46,6 +46,17 @@ function decide(complaintText, analysis, rootCause, investigation) {
       reasoning: 'Security and unauthorized activity claims require mandatory manual review by Security Operations — never auto-resolved regardless of confidence score.',
       confidence,
       sentimentNote: `Note: Escalated per security policy POLICY9, not sentiment (${analysis.sentiment}).`,
+    };
+  }
+
+  // SAFETY GUARD 2b (2.0): Fraud / abuse risk
+  if (risk && risk.score >= risk.highThreshold) {
+    const top = [...risk.signals].filter((s) => s.points > 0).sort((a, b) => b.points - a.points).slice(0, 3).map((s) => s.detail).join('; ');
+    return {
+      decision: 'HUMAN_ESCALATION',
+      reasoning: `Customer fraud/abuse risk score ${risk.score}/100 (${risk.level}) is at or above the escalation threshold (${risk.highThreshold}). Top signals: ${top}. Manual review required before any automated action.`,
+      confidence,
+      sentimentNote: `Note: Escalated on risk score, not sentiment (${analysis.sentiment}).`,
     };
   }
 

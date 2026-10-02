@@ -60,7 +60,7 @@ const append = db.transaction((entry) => {
   return Number(insertStmt.run(row).lastInsertRowid);
 });
 
-function logDecision({ customerId, complaintText, analysis, rootCause, decision, investigation, actions }) {
+function logDecision({ customerId, complaintText, analysis, rootCause, decision, investigation, actions, risk }) {
   try {
     return append({
       customerId,
@@ -75,6 +75,7 @@ function logDecision({ customerId, complaintText, analysis, rootCause, decision,
         orderVerified: !!investigation?.orderVerified,
         orderMismatch: !!investigation?.orderMismatch,
         sentiment: analysis?.sentiment || null,
+        risk: risk ? { score: risk.score, level: risk.level, signals: risk.signals } : null,
         payments: (investigation?.focusPayments || []).map((p) => ({
           id: p.id, amount: p.amount, gatewayStatus: p.gatewayStatus, localStatus: p.localStatus,
         })),

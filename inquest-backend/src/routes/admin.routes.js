@@ -16,4 +16,7 @@ router.post('/profile/name', requireAdminPassword, updateProfileName);
 const { getAuditLog } = require('../controllers/audit.controller');
 router.post('/audit', requireAdminPassword, getAuditLog);
 
+const { getRiskBoard } = require('../controllers/risk.controller');
+router.post('/risk', requireAdminPassword, getRiskBoard);
+
 module.exports = router;

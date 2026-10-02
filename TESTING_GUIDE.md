@@ -1,7 +1,7 @@
 # INQUEST — Testing Guide
 
 Backend: http://localhost:5001 | Frontend: http://localhost:5173 (ya jo bhi port dikhe)
-Admin password (for verification feature): inquest2026
+Admin password (for verification feature): <ADMIN_PASSWORD from your .env>
 
 ## Pre-existing Demo Customers
 
@@ -96,7 +96,7 @@ Expected: variable — tests whether POLICY12 (Wrong Item Received) gets matched
 
 1. Run any complaint that results in `HUMAN_ESCALATION` or `CUSTOMER_CONFIRM` (e.g. Test 5)
 2. Click "Verify Manually" on the result
-3. Enter: Employee Name, Employee Email, Admin Password = `inquest2026`
+3. Enter: Employee Name, Employee Email, Admin Password = `<ADMIN_PASSWORD from your .env>`
 4. Upload an ID card photo
 5. Expected: system compares against the reference ID card (must be uploaded once beforehand via
    admin) and returns verified=true/false with a confidence score and reasoning.
