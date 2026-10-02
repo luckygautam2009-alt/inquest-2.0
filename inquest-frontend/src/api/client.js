@@ -46,11 +46,35 @@ async function requestMultipart(path, formData, timeoutMs = 25000) {
   }
 }
 
-export function submitComplaint(customerId, complaintText) {
-  return request('/complaints', {
-    method: 'POST',
-    body: JSON.stringify({ customerId, complaintText }),
-  });
+export async function submitComplaint(customerId, complaintText, photos = []) {
+  if (!photos.length) {
+    return request('/complaints', {
+      method: 'POST',
+      body: JSON.stringify({ customerId, complaintText }),
+    });
+  }
+  const fd = new FormData();
+  fd.append('customerId', customerId);
+  fd.append('complaintText', complaintText);
+  photos.forEach((f) => fd.append('photos', f));
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 90000);
+  try {
+    const res = await fetch(`${BASE_URL}/complaints`, { method: 'POST', body: fd, signal: controller.signal });
+    const data = await res.json();
+    if (!res.ok) {
+      const err = new Error(data.error || 'Request failed');
+      err.details = data.details;
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error('Request timed out while analysing the photo. Please try again.');
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export function getCustomers() {
@@ -121,3 +145,12 @@ export function updateAdminProfileName({ email, name, adminPassword }) {
     body: JSON.stringify({ email, name, adminPassword }),
   });
 }
+
+// ── 2.0 admin: audit, override, analytics, risk ──
+function adminPost(path, body) {
+  return request(path, { method: 'POST', body: JSON.stringify(body) });
+}
+export const getAuditLog = ({ adminPassword, limit = 100 }) => adminPost('/admin/audit', { adminPassword, limit });
+export const overrideDecision = (payload) => adminPost('/admin/override', payload);
+export const getAnalytics = ({ adminPassword }) => adminPost('/admin/analytics', { adminPassword });
+export const getRiskBoard = ({ adminPassword }) => adminPost('/admin/risk', { adminPassword });

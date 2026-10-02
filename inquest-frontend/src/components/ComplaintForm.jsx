@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createCustomer, getCustomers } from '../api/client';
-import { ChevronDown, Plus, X, User, Mail, Shield, Sparkles } from 'lucide-react';
+import { ChevronDown, Plus, X, User, Mail, Shield, Sparkles, Camera } from 'lucide-react';
 
 const TIER_COLORS = {
   platinum: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30',
@@ -47,6 +47,8 @@ export default function ComplaintForm({ onSubmit, loading }) {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
   const [charCount, setCharCount] = useState(0);
+  const [photos, setPhotos] = useState([]);
+  const [photoError, setPhotoError] = useState(null);
 
   async function loadCustomers(selectId) {
     try {
@@ -73,7 +75,27 @@ export default function ComplaintForm({ onSubmit, loading }) {
   function handleSubmit(e) {
     e.preventDefault();
     if (complaintText.trim().length < 5 || loading) return;
-    onSubmit(customerId, complaintText.trim());
+    onSubmit(customerId, complaintText.trim(), photos.map((p) => p.file));
+  }
+
+  function handlePhotoPick(e) {
+    setPhotoError(null);
+    const picked = Array.from(e.target.files || []);
+    e.target.value = '';
+    const next = [...photos];
+    for (const file of picked) {
+      if (!file.type.startsWith('image/')) { setPhotoError('Only image files are allowed.'); continue; }
+      if (file.size > 5 * 1024 * 1024) { setPhotoError('Each photo must be under 5 MB.'); continue; }
+      if (next.length >= 3) { setPhotoError('You can attach up to 3 photos.'); break; }
+      next.push({ file, url: URL.createObjectURL(file) });
+    }
+    setPhotos(next);
+  }
+
+  function removePhoto(idx) {
+    URL.revokeObjectURL(photos[idx].url);
+    setPhotos(photos.filter((_, i) => i !== idx));
+    setPhotoError(null);
   }
 
   function handleTextChange(e) {
@@ -354,6 +376,35 @@ export default function ComplaintForm({ onSubmit, loading }) {
               ${charCount > 0 ? 'text-paper-dim dark:text-muted font-semibold' : 'text-paper-dim/40 dark:text-muted/40'}`}>
               {charCount} chars
             </span>
+          </div>
+
+          {/* Photo evidence (2.0) */}
+          <div className="mt-3.5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-paper-dim dark:text-muted uppercase tracking-wider">
+                <Camera className="w-3.5 h-3.5 text-amber" /> Photo evidence <span className="font-medium normal-case tracking-normal">(optional, up to 3)</span>
+              </span>
+              {photos.length < 3 && (
+                <label className="text-xs font-semibold text-amber cursor-pointer hover:underline">
+                  + Add photo
+                  <input type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoPick} />
+                </label>
+              )}
+            </div>
+            {photos.length > 0 && (
+              <div className="flex gap-2.5 flex-wrap">
+                {photos.map((p, i) => (
+                  <div key={p.url} className="relative w-20 h-20 rounded-lg overflow-hidden border border-border-strong">
+                    <img src={p.url} alt={'evidence ' + (i + 1)} className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => removePhoto(i)} aria-label="Remove photo"
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center cursor-pointer">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {photoError && <p className="text-xs text-alert font-semibold mt-1.5">{photoError}</p>}
           </div>
 
           {/* Quick example prompts */}

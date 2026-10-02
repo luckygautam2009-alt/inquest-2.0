@@ -35,12 +35,12 @@ export default function App() {
     );
   }
 
-  async function handleSubmit(customerId, complaintText) {
+  async function handleSubmit(customerId, complaintText, photos = []) {
     setLoading(true);
     setError(null);
     setResult(null);
     try {
-      const res = await submitComplaint(customerId, complaintText);
+      const res = await submitComplaint(customerId, complaintText, photos);
       setResult(res.data);
     } catch (err) {
       setError(err.message || 'Something went wrong. Ensure the backend is running on port 5001.');

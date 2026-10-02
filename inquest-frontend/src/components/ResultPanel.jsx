@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import VerifyModal from './VerifyModal';
+import EvidencePanels from './EvidencePanels';
 import {
   CheckCircle, AlertTriangle, UserCheck,
   FileText, Search, Zap, MessageSquare,
@@ -271,6 +272,9 @@ export default function ResultPanel({ data }) {
         )}
       </div>
       {showVerify && <VerifyModal data={data} onClose={() => setShowVerify(false)} />}
+
+      {/* ── 2.0: actions, risk, photo evidence, audit ── */}
+      <EvidencePanels data={data} />
 
       {/* ── Two-column grid: Analysis + Root Cause ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
