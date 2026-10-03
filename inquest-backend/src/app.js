@@ -25,7 +25,7 @@ app.use(cors({
     if (!origin || config.corsOrigins.includes(origin) || origin.startsWith('http://localhost:')) {
       return callback(null, true);
     }
-    return callback(new Error('Not allowed by CORS'));
+    return callback(null, false); // browser blocks it; no server error noise
   },
   credentials: true,
 }));
