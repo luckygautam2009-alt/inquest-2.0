@@ -6,7 +6,9 @@
   "scripts": {
     "test": "node tests/verify_investigation.js",
     "start": "node src/app.js",
-    "dev": "nodemon src/app.js"
+    "dev": "nodemon src/app.js",
+    "demo": "node scripts/pitch_demo.js",
+    "reset-demo": "node scripts/reset_demo.js"
   },
   "keywords": [],
   "author": "",
