@@ -121,7 +121,7 @@ function executeActions({ customerId, analysis, rootCause, decision, investigati
           notes: decision.reasoning,
         });
       } else {
-        const isDelay = policy === 'POLICY11';
+        const isDelay = false; // delay compensation now goes through CUSTOMER_CONFIRM
         result.ticket = createTicket({
           customerId, category: categoryFor(intent), status: isDelay ? 'open' : 'resolved',
           subject: `Auto-resolved: ${policy || 'no policy'} | ${orderLabel}`,
@@ -139,4 +139,4 @@ function executeActions({ customerId, analysis, rootCause, decision, investigati
   return result;
 }
 
-module.exports = { executeActions, createTicket };
+module.exports = { executeActions, createTicket, createRefund };

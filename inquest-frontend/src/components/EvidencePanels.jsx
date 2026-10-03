@@ -1,4 +1,6 @@
-import { Zap, Shield, Camera, FileText } from 'lucide-react';
+import { useState } from 'react';
+import { Zap, Shield, Camera, FileText, Check } from 'lucide-react';
+import { confirmProposal } from '../api/client';
 
 const inr = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
 
@@ -40,6 +42,42 @@ function Row({ label, value, tone }) {
   );
 }
 
+function ProposalCard({ proposal }) {
+  const [st, setSt] = useState({ busy: null, done: null, error: null });
+
+  async function choose(choice) {
+    setSt({ busy: choice, done: null, error: null });
+    try {
+      const res = await confirmProposal({ auditId: proposal.auditId, customerId: proposal.customerId, choice });
+      setSt({ busy: null, done: res.data, error: null });
+    } catch (e) {
+      setSt({ busy: null, done: null, error: e.message || 'Could not record your choice' });
+    }
+  }
+
+  return (
+    <section className="md:col-span-2 rounded-xl border border-amber/40 bg-amber-dim p-5 fade-up">
+      <div className="text-xs font-bold uppercase tracking-wider text-amber mb-2">Your confirmation is needed</div>
+      <p className="text-sm text-paper mb-4">{proposal.summary}</p>
+      {st.done ? (
+        <p className="flex items-center gap-2 text-sm font-semibold text-verified">
+          <Check className="w-4 h-4" /> {st.done.message}
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-2.5">
+          {proposal.options.map((o) => (
+            <button key={o.key} type="button" disabled={!!st.busy} onClick={() => choose(o.key)}
+              className={`text-xs font-bold px-4 py-2.5 rounded-lg cursor-pointer disabled:opacity-50 ${o.key === 'DECLINE' ? 'border border-border-strong text-muted' : 'bg-amber text-ink'}`}>
+              {st.busy === o.key ? 'Saving…' : o.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {st.error && <p className="mt-3 text-xs font-semibold text-alert">{st.error}</p>}
+    </section>
+  );
+}
+
 export default function EvidencePanels({ data }) {
   const { actions, risk, photo, auditId } = data || {};
   const refund = actions?.refund;
@@ -49,6 +87,8 @@ export default function EvidencePanels({ data }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {data?.proposal && <ProposalCard proposal={data.proposal} />}
+
       {actions && (
         <Card icon={Zap} title="Action Taken by Inquest">
           {refund ? (

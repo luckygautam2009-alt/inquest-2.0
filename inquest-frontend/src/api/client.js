@@ -161,3 +161,6 @@ export const placeShopOrder = (payload) => request('/shop/orders', { method: 'PO
 export const getShopOrders = (customerId) => request(`/shop/orders/${customerId}`);
 export const simulateShopOrder = (orderId, customerId, action) =>
   request(`/shop/orders/${orderId}/simulate`, { method: 'POST', body: JSON.stringify({ customerId, action }) });
+
+// ── Customer confirmation of proposed resolutions ──
+export const confirmProposal = (payload) => request('/complaints/confirm', { method: 'POST', body: JSON.stringify(payload) });

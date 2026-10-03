@@ -9,6 +9,7 @@ const audit = require('../services/auditService');
 const { executeActions } = require('../services/actionExecutor');
 const { computeRisk } = require('../services/riskEngine');
 const { assessPhotos } = require('../services/photoEvidenceService');
+const { createProposal } = require('../services/proposalService');
 
 async function submitComplaint(req, res) {
   const { complaintText, customerId } = req.body;
@@ -74,6 +75,7 @@ async function submitComplaint(req, res) {
 
   const actions = executeActions({ customerId, analysis, rootCause, decision, investigation });
   const auditId = audit.logDecision({ customerId, complaintText, analysis, rootCause, decision, investigation, actions, risk, photo });
+  const proposal = createProposal({ auditId, customerId, decision, rootCause, investigation });
 
   const totalMs = Date.now() - totalStart;
 
@@ -96,6 +98,7 @@ async function submitComplaint(req, res) {
       actions,
       risk,
       photo,
+      proposal,
     },
   });
 }

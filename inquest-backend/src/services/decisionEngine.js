@@ -209,6 +209,21 @@ function decide(complaintText, analysis, rootCause, investigation, risk, photo) 
     }
   }
 
+  // 2.0: Delay compensation is an offer the customer must choose (credit vs expedite)
+  if (matchedPolicy === 'POLICY11' && evidenceSatisfied && orderVerified && confidence >= 60) {
+    const o = investigation.focusOrder;
+    const today = new Date().toISOString().slice(0, 10);
+    const delayed = o.courierStatus === 'delayed' || (o.estimatedDelivery && o.estimatedDelivery < today);
+    if (delayed) {
+      return {
+        decision: 'CUSTOMER_CONFIRM',
+        reasoning: `Order ${o.id} is past its expected delivery date (ETA ${o.estimatedDelivery || 'unknown'}, courier status: ${o.courierStatus || 'in transit'}). Eligible under POLICY11 for a shipping credit or expedited redelivery; the customer chooses the remedy.`,
+        confidence,
+        sentimentNote: `Note: Decision based on verified delivery records, not sentiment (${analysis.sentiment}).`,
+      };
+    }
+  }
+
   // 5. Confidence threshold: >= 85
   // 6. Category safe for automation (not security, not damage dispute)
   if (confidence >= 85 && evidenceSatisfied && (orderVerified || !orderRequired)) {
