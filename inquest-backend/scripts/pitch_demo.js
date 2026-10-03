@@ -8,17 +8,20 @@ const BASE = `http://localhost:${process.env.PORT || 5001}/api`;
 const PW = process.env.ADMIN_PASSWORD;
 const photo = process.argv[2] || path.join(os.homedir(), 'Desktop', 'damaged.jpg');
 const hasPhoto = fs.existsSync(photo);
+const badPhoto = process.argv[3] || path.join(os.homedir(), 'Desktop', 'no_damage_selfie.jpg');
+const hasBad = fs.existsSync(badPhoto);
 
 const call = async (method, p, body) => (await fetch(BASE + p, {
   method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined,
 })).json();
 
-async function complaint(customerId, text, withPhoto) {
+async function complaint(customerId, text, withPhoto, photoPath) {
   if (!withPhoto) return call('POST', '/complaints', { customerId, complaintText: text });
   const fd = new FormData();
   fd.append('customerId', customerId);
   fd.append('complaintText', text);
-  fd.append('photos', new Blob([fs.readFileSync(photo)], { type: 'image/jpeg' }), path.basename(photo));
+  const pp = photoPath || photo;
+  fd.append('photos', new Blob([fs.readFileSync(pp)], { type: 'image/jpeg' }), path.basename(pp));
   return (await fetch(BASE + '/complaints', { method: 'POST', body: fd })).json();
 }
 
@@ -26,7 +29,10 @@ const rows = [];
 function record(name, expected, d, extra) {
   const actual = d ? d.decision.decision : 'ERROR';
   const ok = actual === expected;
-  rows.push({ name, expected, actual, policy: d ? d.rootCause.matchedPolicy : '-', ok, extra });
+  const dbg = !ok && d
+    ? ` | ${d.decision.reasoning} | rootCauseConf=${d.rootCause.confidence} | vision=${d.photo && d.photo.vision ? JSON.stringify(d.photo.vision) : 'none'}`
+    : '';
+  rows.push({ name, expected, actual, policy: d ? d.rootCause.matchedPolicy : '-', ok, extra: (extra || '') + dbg });
 }
 
 (async () => {
@@ -55,6 +61,21 @@ function record(name, expected, d, extra) {
     record('C  Same photo reused', 'HUMAN_ESCALATION', rc.data, rc.data && rc.data.photo && rc.data.photo.reuse.detected ? 'image reuse caught by hash' : 'reuse NOT detected');
   } else {
     console.log(`(photo not found at ${photo}: cases B and C skipped)\n`);
+  }
+
+  // B2: complaint says damaged, but the photo shows no damage -> no automatic refund
+  if (hasBad) {
+    const b2 = await call('POST', '/shop/orders', { customerId: cust, productId: 'phone', quantity: 1, paymentMode: 'normal' });
+    const b2id = b2.data.order.id;
+    await call('POST', `/shop/orders/${b2id}/simulate`, { customerId: cust, action: 'deliver' });
+    const r2 = await complaint(cust, `my order ${b2id} phone arrived with a cracked broken screen, please refund`, true, badPhoto);
+    const v2 = r2.data && r2.data.photo && r2.data.photo.vision;
+    const noRefund = r2.data && !r2.data.actions.refund && r2.data.decision.decision !== 'AUTO_RESOLVE';
+    rows.push({
+      name: 'B2 Photo shows no damage', expected: 'NO AUTO REFUND',
+      actual: r2.data ? r2.data.decision.decision : 'ERROR', policy: r2.data ? r2.data.rootCause.matchedPolicy : '-',
+      ok: !!noRefund, extra: v2 ? `vision: damage visible=${v2.damageVisible}, consistent=${v2.damageConsistentWithComplaint}` : '',
+    });
   }
 
   // D: security concern
