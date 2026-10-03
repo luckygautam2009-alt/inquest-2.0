@@ -14,6 +14,7 @@ const adminRoutes = require('./routes/admin.routes');
 const shopRoutes = require('./routes/shop.routes');
 
 const app = express();
+app.set('trust proxy', 1); // behind Render/Railway/Fly: use the real client IP for rate limiting
 
 app.use(helmet({
   crossOriginResourcePolicy: false,
