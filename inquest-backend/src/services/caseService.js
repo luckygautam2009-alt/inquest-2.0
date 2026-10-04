@@ -65,7 +65,7 @@ function derive({ d, a, ev, proposal, response, overrides, order }) {
   if (latestOv) {
     return {
       status: 'needs_attention', resolvedBy: null,
-      detail: latestOv.decision === 'OVERRIDE_UNDO' ? 'AI action was undone by staff: ' + latestOv.reasoning : 'Escalated by staff: ' + latestOv.reasoning,
+      detail: latestOv.decision === 'OVERRIDE_UNDO' ? 'AI action was undone by staff: ' + latestOv.reasoning : latestOv.decision === 'OVERRIDE_REQUEST_INFO' ? 'Staff asked the customer for more information: ' + latestOv.reasoning : 'Escalated by staff: ' + latestOv.reasoning,
       customerStatus: 'in_review', customerLabel: 'Under review by our team', customerDetail: 'Our support team is looking into this.',
     };
   }
@@ -137,7 +137,7 @@ function buildOne(d, rel, customers) {
     : null;
 
   return {
-    id: d.id, ts: d.ts, customerId: d.customerId, customerName: customers.get(d.customerId) || null,
+    id: d.id, complaintId: ev.complaintId || null, ts: d.ts, customerId: d.customerId, customerName: customers.get(d.customerId) || null,
     orderId: ev.orderId || null, product: order ? order.product : null, amount: order ? order.amount : null,
     complaintText: d.complaintText, intent: d.intent, policy: d.matchedPolicy, decision: d.decision, confidence: d.confidence,
     reasoning: d.reasoning,

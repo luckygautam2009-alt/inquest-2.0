@@ -183,3 +183,34 @@ export const authSignup = (payload) => request('/auth/signup', { method: 'POST',
 export const authLogin = (payload) => request('/auth/login', { method: 'POST', body: JSON.stringify(payload) });
 export const authMe = () => request('/auth/me');
 export const authLogout = () => request('/auth/logout', { method: 'POST' });
+
+// ── Customer: complaints and notifications ──
+export const getMyComplaints = () => request('/me/complaints');
+export const getMyNotifications = () => request('/me/notifications');
+export const markMyNotificationsRead = (ids) => request('/me/notifications/read', { method: 'POST', body: JSON.stringify(ids ? { ids } : {}) });
+export async function registerComplaint({ orderId, complaintText, issueKey, photos = [] }) {
+  const fd = new FormData();
+  if (orderId) fd.append('orderId', orderId);
+  fd.append('complaintText', complaintText);
+  if (issueKey) fd.append('issueKey', issueKey);
+  photos.forEach((f) => fd.append('photos', f));
+  const t = getToken();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60000);
+  try {
+    const res = await fetch(`${BASE_URL}/me/complaints`, { method: 'POST', body: fd, signal: controller.signal, headers: t ? { Authorization: `Bearer ${t}` } : {} });
+    const data = await res.json();
+    if (!res.ok) {
+      const err = new Error(data.error || 'Request failed');
+      err.status = res.status;
+      if (res.status === 401 && t) window.dispatchEvent(new Event('inquest:auth-expired'));
+      throw err;
+    }
+    return data;
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error('The upload took too long. Please try again with smaller photos.');
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}

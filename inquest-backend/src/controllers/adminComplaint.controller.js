@@ -1,9 +1,11 @@
 const config = require('../config/env');
 const adminSessions = require('../services/adminSessionService');
 const complaints = require('../services/complaintService');
+const settings = require('../services/settingsService');
+const { autoEnabled, thresholds } = require('../services/automationPolicy');
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-const ACTIONS = ['CONFIRM_AI', 'SEND_OFFER', 'REFUND', 'NO_REFUND'];
+const ACTIONS = ['CONFIRM_AI', 'SEND_OFFER', 'REFUND', 'NO_REFUND', 'REQUEST_INFO'];
 
 function createSession(req, res) {
   const { adminPassword, employeeName, employeeEmail } = req.body || {};
@@ -33,9 +35,9 @@ function detail(req, res) {
 async function investigate(req, res) {
   const id = Number(req.body && req.body.complaintId);
   if (!Number.isInteger(id) || id < 1) return res.status(400).json({ success: false, error: 'complaintId must be a positive integer' });
-  const out = await complaints.investigate(id);
+  const out = await complaints.investigate(id, { force: req.body && req.body.force === true });
   if (out.status !== 200) return res.status(out.status).json({ success: false, error: out.error });
-  res.status(200).json({ success: true, data: out.data });
+  res.status(200).json({ success: true, data: out.data, cached: !!out.cached });
 }
 
 async function resolve(req, res) {
@@ -53,4 +55,16 @@ async function resolve(req, res) {
   res.status(200).json({ success: true, data: out.data });
 }
 
-module.exports = { createSession, list, detail, investigate, resolve };
+function file(req, res) {
+  const f = complaints.getFile({ complaintId: Number(req.params.id), fileId: Number(req.params.fileId) });
+  if (!f) return res.status(404).json({ success: false, error: 'Not found' });
+  res.set({ 'Content-Type': f.mime, 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' }).send(f.data);
+}
+
+function automationSettings(req, res) {
+  const body = req.body || {};
+  if (typeof body.autoInvestigate === 'boolean') settings.set('autoInvestigate', body.autoInvestigate ? 'true' : 'false');
+  res.status(200).json({ success: true, data: { autoInvestigate: autoEnabled(), thresholds: thresholds() } });
+}
+
+module.exports = { createSession, list, detail, investigate, resolve, file, automationSettings };

@@ -26,6 +26,7 @@ async function register(token, orderId, text, withPhoto) {
   const sess = await call('POST', '/admin/session', { adminPassword: PW, employeeName: 'Yash Gautam', employeeEmail: 'yash@example.com' });
   check('admin session issued', sess.status === 200 && !!sess.json.data.token);
   const A = { 'X-Admin-Token': sess.json.data.token };
+  await call('POST', '/admin/settings', { autoInvestigate: false }, A);
   check('bad admin token rejected', (await call('POST', '/admin/complaints', {}, { 'X-Admin-Token': 'a'.repeat(64) })).status === 401);
 
   // --- customer ---
@@ -68,7 +69,7 @@ async function register(token, orderId, text, withPhoto) {
   await call('POST', `/shop/orders/${oB}/simulate`, { action: 'deliver' }, C);
   const idB = (await register(token, oB, 'my phone arrived with a cracked broken screen, please refund', false)).json.data.id;
   const invB = await call('POST', '/admin/complaints/investigate', { complaintId: idB }, A);
-  check('damage claim without photo: AI escalates', invB.json.data.decision.decision === 'HUMAN_ESCALATION', invB.json.data.decision.decision);
+  check('damage claim without photo: not auto-resolved (escalated or photo requested)', ['HUMAN_ESCALATION', 'NEEDS_INFO'].includes(invB.json.data.decision.decision), invB.json.data.decision.decision);
   check('AI-confirm is refused for an escalation', (await call('POST', '/admin/complaints/resolve', { complaintId: idB, action: 'CONFIRM_AI' }, A)).status === 409);
   check('refund above order value rejected', (await call('POST', '/admin/complaints/resolve', { complaintId: idB, action: 'REFUND', amount: 99999 }, A)).status === 400);
   const refB = await call('POST', '/admin/complaints/resolve', { complaintId: idB, action: 'REFUND', amount: 2000, customerMessage: 'Sorry about the damage!', note: 'Partial refund agreed' }, A);
@@ -95,6 +96,7 @@ async function register(token, orderId, text, withPhoto) {
   const mails = db.prepare('SELECT subject FROM email_outbox WHERE toEmail=?').all(email);
   check('emails sent to the customer\'s login address', mails.length >= 3 && mails.some((m) => /registered/.test(m.subject)), `${mails.length} emails: ${[...new Set(mails.map((m) => m.subject))].slice(0, 3).join(' | ')}`);
 
+  await call('POST', '/admin/settings', { autoInvestigate: true }, A);
   const chain = await call('POST', '/admin/audit', { adminPassword: PW, limit: 1 });
   check('audit chain still valid', chain.json.data.chain.valid, JSON.stringify(chain.json.data.chain));
   console.log(`\n${pass} passed, ${fail} failed`);

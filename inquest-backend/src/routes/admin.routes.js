@@ -31,5 +31,7 @@ router.post('/complaints', requireAdminPassword, adminComplaints.list);
 router.post('/complaints/detail', requireAdminPassword, adminComplaints.detail);
 router.post('/complaints/investigate', requireAdminPassword, adminComplaints.investigate);
 router.post('/complaints/resolve', requireAdminPassword, adminComplaints.resolve);
+router.get('/complaints/:id/files/:fileId', requireAdminPassword, adminComplaints.file);
+router.post('/settings', requireAdminPassword, adminComplaints.automationSettings);
 
 module.exports = router;

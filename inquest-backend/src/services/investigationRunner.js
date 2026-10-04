@@ -10,9 +10,32 @@ const { assessPhotos } = require('./photoEvidenceService');
 const { executeActions } = require('./actionExecutor');
 const audit = require('./auditService');
 
-// The same pipeline as POST /api/complaints, reusable. With execute=false it is a DRY RUN:
-// it recommends a decision and logs it, but moves no money and creates no tickets.
-async function runInvestigation({ customerId, complaintText, files = [], execute = false, complaintId = null, extraEvidence = {} }) {
+const ORDER_INTENTS = ['payment/billing', 'payment', 'cancellation', 'refund/return', 'refund', 'order_status/delay', 'product_issue'];
+
+// When the only blocker is MISSING information the customer can supply, ask for it instead of burdening a human
+function refineDecision({ decision, analysis, rootCause, investigation, photo }) {
+  if (decision.decision !== 'HUMAN_ESCALATION') return decision;
+  const noOrderMentioned = !investigation.focusOrder && !investigation.orderMismatch && !investigation.orderHintDetected;
+  if (noOrderMentioned && (ORDER_INTENTS.includes(analysis.intent) || analysis.intent === 'other/ambiguous')) {
+    return {
+      ...decision, decision: 'NEEDS_INFO',
+      reasoning: 'The complaint does not say which order it is about, so nothing can be verified yet.',
+      infoRequest: 'Please tell us which order this is about (the order ID, for example ORDER1001) and describe what went wrong.',
+    };
+  }
+  if (['POLICY6', 'POLICY8'].includes(rootCause.matchedPolicy) && investigation.orderVerified && !(photo && photo.provided)) {
+    return {
+      ...decision, decision: 'NEEDS_INFO',
+      reasoning: 'A photo of the item is needed to verify its condition before any resolution.',
+      infoRequest: 'Please send a clear photo of the item showing the problem (and the shipping label if possible).',
+    };
+  }
+  return decision;
+}
+
+// The investigation pipeline, reusable. autoPolicy decides what may be executed without a human;
+// without autoExecute it is a DRY RUN (recommend + log, but no refunds or tickets).
+async function runInvestigation({ customerId, complaintText, files = [], complaintId = null, autoPolicy = null, autoExecute = false, extraEvidence = {} }) {
   if (!dataStore.getCustomerById(customerId)) return { error: { status: 404, message: `Customer not found: ${customerId}` } };
 
   const analysis = await analyzeComplaint(complaintText);
@@ -29,13 +52,22 @@ async function runInvestigation({ customerId, complaintText, files = [], execute
     photo = await assessPhotos({ files, customerId, order: investigation.focusOrder, complaintText, complaintId });
   }
 
-  const decision = decide(complaintText, analysis, rootCause, investigation, risk, photo);
-  const handoff = buildHandoff(investigation, rootCause, decision);
+  const decision = refineDecision({ decision: decide(complaintText, analysis, rootCause, investigation, risk, photo), analysis, rootCause, investigation, photo });
+  const built = buildHandoff(investigation, rootCause, decision);
+  const handoff = decision.decision === 'NEEDS_INFO'
+    ? { ...built, type: 'NEEDS_INFO', suggestedAction: 'Ask the customer for the missing information', customerMessage: decision.infoRequest }
+    : built;
   const evidenceGraph = buildEvidenceGraph(investigation, rootCause, decision);
-  const actions = execute ? executeActions({ customerId, analysis, rootCause, decision, investigation }) : null;
-  const auditId = audit.logDecision({ customerId, complaintText, analysis, rootCause, decision, investigation, actions, risk, photo, extra: extraEvidence });
 
-  return { data: { customerId, complaintText, analysis, investigation, rootCause, decision, handoff, evidenceGraph, risk, photo, actions, auditId, proposal: null, complaintId } };
+  const automation = autoPolicy ? autoPolicy({ decision, risk, investigation, rootCause, photo }) : null;
+  const execute = !!(autoExecute && automation && automation.kind === 'EXECUTE');
+  const actions = execute ? executeActions({ customerId, analysis, rootCause, decision, investigation }) : null;
+  const auditId = audit.logDecision({
+    customerId, complaintText, analysis, rootCause, decision, investigation, actions, risk, photo,
+    extra: { ...extraEvidence, dryRun: !execute, automation },
+  });
+
+  return { data: { customerId, complaintText, analysis, investigation, rootCause, decision, handoff, evidenceGraph, risk, photo, actions, auditId, automation, proposal: null, complaintId } };
 }
 
 module.exports = { runInvestigation };

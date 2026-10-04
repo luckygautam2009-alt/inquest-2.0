@@ -26,6 +26,14 @@ const DECISION_CONFIG = {
     pill: 'bg-amber-dim border-amber/40 text-amber font-bold',
     glow: '0 0 0 1px rgba(217, 119, 6, 0.3), 0 8px 30px rgba(217, 119, 6, 0.12)',
   },
+  NEEDS_INFO: {
+    label: 'Needs Customer Information',
+    icon: MessageSquare,
+    border: '#6366F1',
+    bg: 'rgba(99, 102, 241, 0.10)',
+    pill: 'bg-ink-lighter border-border-strong text-paper font-bold',
+    glow: '0 0 0 1px rgba(99, 102, 241, 0.3), 0 8px 30px rgba(99, 102, 241, 0.12)',
+  },
   HUMAN_ESCALATION: {
     label: 'Escalated to Support Agent',
     icon: UserCheck,
@@ -195,7 +203,9 @@ function Section({ icon: Icon, title, children, className = '', accent = false, 
 // ── Main ResultPanel ───────────────────────────────────────────────────────────
 export default function ResultPanel({ data }) {
   const { analysis, investigation, rootCause, decision, handoff } = data;
-  const decisionCfg = DECISION_CONFIG[decision?.decision] || DECISION_CONFIG.HUMAN_ESCALATION;
+  const DECISION_ALIASES = { AUTO_RESOLVED: 'AUTO_RESOLVE', HUMAN_REVIEW: 'HUMAN_ESCALATION', NEEDS_CUSTOMER_INFORMATION: 'NEEDS_INFO' };
+  const decisionKey = DECISION_ALIASES[decision?.decision] || decision?.decision;
+  const decisionCfg = DECISION_CONFIG[decisionKey] || { ...DECISION_CONFIG.NEEDS_INFO, label: String(decision?.decision || 'Unknown').replace(/_/g, ' ') };
   const DecisionIcon = decisionCfg.icon;
   const IntentIcon = intentIcon(analysis?.intent);
   const [showVerify, setShowVerify] = useState(false);
@@ -432,6 +442,21 @@ export default function ResultPanel({ data }) {
                   <span>Draft Message for Customer</span>
                   <span className="text-[11px] text-amber font-medium">Awaiting customer response</span>
                 </div>
+                <p className="text-base text-paper leading-relaxed font-sans">{handoff.customerMessage}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {handoff?.type === 'NEEDS_INFO' && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-base font-bold text-paper">
+              <MessageSquare className="w-5 h-5 shrink-0" />
+              <span>{handoff.suggestedAction}</span>
+            </div>
+            {handoff.customerMessage && (
+              <div className="bg-ink-lighter border border-border-strong rounded-xl p-5 shadow-xs">
+                <div className="text-xs text-muted font-bold uppercase tracking-wider mb-2">Request sent to the customer</div>
                 <p className="text-base text-paper leading-relaxed font-sans">{handoff.customerMessage}</p>
               </div>
             )}
