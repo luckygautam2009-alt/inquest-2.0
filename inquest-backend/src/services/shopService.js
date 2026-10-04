@@ -1,5 +1,7 @@
 const crypto = require('crypto');
 const db = require('../db/connection');
+require('./auditService');
+require('./proposalService');
 
 const CATALOG = [
   { id: 'earbuds', name: 'Wireless Earbuds', price: 1499, emoji: '🎧', blurb: 'Bluetooth 5.3, 24h battery' },
@@ -8,7 +10,7 @@ const CATALOG = [
   { id: 'watch', name: 'Smart Watch', price: 3499, emoji: '⌚', blurb: 'Heart-rate and sleep tracking' },
   { id: 'phone', name: 'Smartphone', price: 4500, emoji: '📱', blurb: '6.5" display, 4GB RAM' },
   { id: 'headphones', name: 'Noise-Cancelling Headphones', price: 4999, emoji: '🎶', blurb: 'Active noise cancelling' },
-  { id: 'laptop', name: 'Premium Laptop', price: 54999, emoji: '��', blurb: 'High-value item: always needs human review' },
+  { id: 'laptop', name: 'Premium Laptop', price: 54999, emoji: '\u{1F4BB}', blurb: 'High-value item: always needs human review' },
 ];
 
 const MODES = ['normal', 'double_charge', 'gateway_glitch'];
@@ -77,13 +79,20 @@ function placeOrder({ customerId, productId, quantity, paymentMode }) {
   return { status: 201, order, payments };
 }
 
+const caseService = require('./caseService');
+
 function listOrders(customerId) {
+  const latest = caseService.latestByOrder(customerId);
   const orders = db.prepare('SELECT * FROM orders WHERE customerId=? ORDER BY rowid DESC').all(customerId);
-  return orders.map((o) => ({
-    ...o,
-    payments: db.prepare('SELECT * FROM payments WHERE orderId=? AND customerId=? ORDER BY timestamp ASC').all(o.id, customerId),
-    refunds: db.prepare('SELECT * FROM refunds WHERE orderId=? AND customerId=? ORDER BY initiatedAt ASC').all(o.id, customerId),
-  }));
+  return orders.map((o) => {
+    const c = latest.get(o.id);
+    return {
+      ...o,
+      payments: db.prepare('SELECT * FROM payments WHERE orderId=? AND customerId=? ORDER BY timestamp ASC').all(o.id, customerId),
+      refunds: db.prepare('SELECT * FROM refunds WHERE orderId=? AND customerId=? ORDER BY initiatedAt ASC').all(o.id, customerId),
+      complaint: c ? { status: c.customerStatus, label: c.customerLabel, detail: c.customerDetail, auditId: c.id, proposal: c.proposal || undefined } : { status: 'none' },
+    };
+  });
 }
 
 function simulate({ orderId, customerId, action }) {

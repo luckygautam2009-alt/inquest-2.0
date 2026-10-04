@@ -13,6 +13,7 @@ const verificationRoutes = require('./routes/verification.routes');
 const adminRoutes = require('./routes/admin.routes');
 const shopRoutes = require('./routes/shop.routes');
 const authRoutes = require('./routes/auth.routes');
+const meRoutes = require('./routes/me.routes');
 
 const app = express();
 app.set('trust proxy', 1); // behind Render/Railway/Fly: use the real client IP for rate limiting
@@ -42,6 +43,7 @@ app.use('/api/verify', verificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/shop', shopRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/me', meRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

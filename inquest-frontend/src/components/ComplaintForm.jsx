@@ -1,3 +1,4 @@
+import { goTo } from '../auth/nav';
 import { useEffect, useState } from 'react';
 import { createCustomer, getCustomers } from '../api/client';
 import { ChevronDown, Plus, X, User, Mail, Shield, Sparkles, Camera } from 'lucide-react';
@@ -31,6 +32,9 @@ const SAMPLE_COMPLAINTS = [
 ];
 
 export default function ComplaintForm({ onSubmit, loading, prefill }) {
+  // Agent console: staff always use the customer picker (customers file complaints from the store)
+  const authCustomer = null;
+  const requireAuth = false;
   const [customers, setCustomers] = useState(FALLBACK_CUSTOMERS);
   const [customerId, setCustomerId] = useState(prefill?.customerId || 'CUST001');
   const [complaintText, setComplaintText] = useState(prefill?.text || '');
@@ -68,14 +72,14 @@ export default function ComplaintForm({ onSubmit, loading, prefill }) {
   }
 
   useEffect(() => {
-    loadCustomers();
+    if (!authCustomer && !requireAuth) loadCustomers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleSubmit(e) {
     e.preventDefault();
     if (complaintText.trim().length < 5 || loading) return;
-    onSubmit(customerId, complaintText.trim(), photos.map((p) => p.file));
+    onSubmit(authCustomer ? authCustomer.id : customerId, complaintText.trim(), photos.map((p) => p.file));
   }
 
   function handlePhotoPick(e) {
@@ -147,7 +151,7 @@ export default function ComplaintForm({ onSubmit, loading, prefill }) {
   }
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
-  const canSubmit = complaintText.trim().length >= 5 && !loading;
+  const canSubmit = complaintText.trim().length >= 5 && !loading && (!!authCustomer || !requireAuth);
 
   return (
     <div className="relative">
@@ -158,7 +162,21 @@ export default function ComplaintForm({ onSubmit, loading, prefill }) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Customer selector */}
+        {authCustomer && (
+          <div className="rounded-xl border border-verified/40 bg-verified-dim p-3.5 text-sm">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-verified mb-1">Signed in</div>
+            <div className="font-bold text-paper">{authCustomer.name} <span className="font-mono text-xs text-muted">· {authCustomer.id}</span></div>
+            <div className="text-xs text-muted">{authCustomer.email}</div>
+          </div>
+        )}
+        {!authCustomer && requireAuth && (
+          <div className="rounded-xl border border-amber/40 bg-amber-dim p-4 text-sm">
+            <div className="font-bold text-paper mb-1">Sign in to file a complaint</div>
+            <p className="text-xs text-muted mb-3">Your orders and payments are linked to your account.</p>
+            <button type="button" onClick={() => goTo('/login')} className="bg-amber text-ink font-bold text-xs px-4 py-2 rounded-lg cursor-pointer">Sign in / Create account</button>
+          </div>
+        )}
+        {!authCustomer && !requireAuth && (
         <div>
           <label className="block text-xs font-bold text-paper-dim dark:text-muted uppercase tracking-wider mb-2.5">
             Select Customer
@@ -214,8 +232,10 @@ export default function ComplaintForm({ onSubmit, loading, prefill }) {
           </button>
         </div>
 
+        )}
+
         {/* Add customer inline panel */}
-        {showAdd && (
+        {!authCustomer && !requireAuth && showAdd && (
           <div className="border border-border-strong bg-ink-lighter rounded-xl p-4.5 space-y-3.5 fade-up shadow-sm">
             <div className="flex items-center gap-2 mb-1">
               <Plus className="w-4 h-4 text-amber" />

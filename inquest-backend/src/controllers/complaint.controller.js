@@ -10,6 +10,8 @@ const { executeActions } = require('../services/actionExecutor');
 const { computeRisk } = require('../services/riskEngine');
 const { assessPhotos } = require('../services/photoEvidenceService');
 const { createProposal } = require('../services/proposalService');
+const { notifyCase } = require('../services/eventNotifier');
+const caseService = require('../services/caseService');
 
 async function submitComplaint(req, res) {
   const { complaintText, customerId } = req.body;
@@ -76,6 +78,9 @@ async function submitComplaint(req, res) {
   const actions = executeActions({ customerId, analysis, rootCause, decision, investigation });
   const auditId = audit.logDecision({ customerId, complaintText, analysis, rootCause, decision, investigation, actions, risk, photo });
   const proposal = createProposal({ auditId, customerId, decision, rootCause, investigation });
+  notifyCase(auditId);
+  const caseView = caseService.getCase(auditId);
+  const customerView = caseView ? { status: caseView.customerStatus, label: caseView.customerLabel, detail: caseView.customerDetail } : null;
 
   const totalMs = Date.now() - totalStart;
 
@@ -99,6 +104,7 @@ async function submitComplaint(req, res) {
       risk,
       photo,
       proposal,
+      customerView,
     },
   });
 }

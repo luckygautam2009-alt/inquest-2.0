@@ -8,7 +8,10 @@ import { useTheme } from './hooks/useTheme';
 import AdminPanel from './components/AdminPanel';
 import StoryPage from './pages/StoryPage';
 import StorePage from './pages/StorePage';
-import { Scale, Activity, ChevronRight, Sun, Moon, ShieldCheck, Sparkles, ShoppingBag } from 'lucide-react';
+import AuthPage from './pages/AuthPage';
+import GatePage from './pages/GatePage';
+import { goTo } from './auth/nav';
+import { Scale, Activity, ChevronRight, Sun, Moon, ShieldCheck, Sparkles, ArrowLeft } from 'lucide-react';
 import logoMark from './assets/logo-mark.png';
 
 export default function App() {
@@ -26,19 +29,29 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  if (route === '/') {
+    return <GatePage />;
+  }
+
+  if (route === '/admin') {
+    return (
+      <div className="min-h-screen bg-ink">
+        <AdminPanel onClose={() => goTo('/')} />
+      </div>
+    );
+  }
+
+  if (route === '/login') {
+    return <AuthPage />;
+  }
+
   if (route === '/store') {
     return (
       <StorePage
-        onBack={() => {
-          window.history.pushState({}, '', '/');
-          setRoute('/');
-        }}
-        onReport={(p) => {
-          setPrefill({ ...p, key: Date.now() });
-          setResult(null);
+        onOpenConsole={(data) => {
+          setResult(data);
           setError(null);
-          window.history.pushState({}, '', '/');
-          setRoute('/');
+          goTo('/console');
         }}
       />
     );
@@ -60,7 +73,7 @@ export default function App() {
     setError(null);
     setResult(null);
     try {
-      const res = await submitComplaint(customerId, complaintText, photos);
+      const res = await submitComplaint(customerId, complaintText, photos, { skipAuth: true });
       setResult(res.data);
     } catch (err) {
       setError(err.message || 'Something went wrong. Ensure the backend is running on port 5001.');
@@ -85,7 +98,7 @@ export default function App() {
             <div className="flex items-center gap-2.5">
               <span className="font-display text-xl sm:text-2xl font-bold tracking-tight text-paper">INQUEST</span>
               <span className="text-border-strong text-base select-none">/</span>
-              <span className="text-xs sm:text-sm text-paper-dim dark:text-muted font-semibold">RootCause AI</span>
+              <span className="text-xs sm:text-sm text-paper-dim dark:text-muted font-semibold">Agent Console</span>
             </div>
           </div>
 
@@ -97,18 +110,15 @@ export default function App() {
               </div>
             )}
 
-            {/* Live Store button */}
+            {/* Back to the gate */}
             <button
               type="button"
-              onClick={() => {
-                window.history.pushState({}, '', '/store');
-                setRoute('/store');
-              }}
-              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-verified-dim hover:bg-verified-dim/80 border border-verified/40 text-verified text-xs sm:text-sm font-semibold transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.98]"
-              title="Open the live demo store"
+              onClick={() => goTo('/')}
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-ink-light hover:bg-ink-lighter border border-border-strong text-paper text-xs sm:text-sm font-semibold transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.98]"
+              title="Back to the home screen"
             >
-              <ShoppingBag className="w-4 h-4 shrink-0" />
-              <span className="hidden sm:inline">Live Store</span>
+              <ArrowLeft className="w-4 h-4 text-amber shrink-0" />
+              <span className="hidden sm:inline">Home</span>
             </button>
 
             {/* See how it works button */}

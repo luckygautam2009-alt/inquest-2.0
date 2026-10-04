@@ -17,6 +17,7 @@ function needSession(req, res, next) {
   next();
 }
 
+router.get('/config', (req, res) => res.json({ success: true, data: { requireAuth: process.env.REQUIRE_AUTH === 'true' } }));
 router.post('/signup', authLimiter, signup);
 router.post('/login', authLimiter, login);
 router.get('/me', attachCustomer, needSession, me);

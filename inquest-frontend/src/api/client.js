@@ -1,11 +1,20 @@
+import { getToken } from '../auth/tokenStore';
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
 
 async function request(path, options = {}) {
+  const token = getToken();
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
   });
   const data = await res.json();
+  if (res.status === 401 && token && !path.startsWith('/admin') && !path.startsWith('/auth/login') && !path.startsWith('/auth/signup')) {
+    window.dispatchEvent(new Event('inquest:auth-expired'));
+  }
   if (!res.ok) {
     const err = new Error(data.error || 'Request failed');
     err.details = data.details;
@@ -46,11 +55,12 @@ async function requestMultipart(path, formData, timeoutMs = 25000) {
   }
 }
 
-export async function submitComplaint(customerId, complaintText, photos = []) {
+export async function submitComplaint(customerId, complaintText, photos = [], opts = {}) {
   if (!photos.length) {
     return request('/complaints', {
       method: 'POST',
       body: JSON.stringify({ customerId, complaintText }),
+      headers: opts.skipAuth ? { Authorization: '' } : undefined,
     });
   }
   const fd = new FormData();
@@ -60,7 +70,8 @@ export async function submitComplaint(customerId, complaintText, photos = []) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 90000);
   try {
-    const res = await fetch(`${BASE_URL}/complaints`, { method: 'POST', body: fd, signal: controller.signal });
+    const t = opts.skipAuth ? null : getToken();
+    const res = await fetch(`${BASE_URL}/complaints`, { method: 'POST', body: fd, signal: controller.signal, headers: t ? { Authorization: `Bearer ${t}` } : {} });
     const data = await res.json();
     if (!res.ok) {
       const err = new Error(data.error || 'Request failed');
@@ -70,6 +81,7 @@ export async function submitComplaint(customerId, complaintText, photos = []) {
     }
     return data;
   } catch (err) {
+    if (err.status === 401 && getToken()) window.dispatchEvent(new Event('inquest:auth-expired'));
     if (err.name === 'AbortError') throw new Error('Request timed out while analysing the photo. Please try again.');
     throw err;
   } finally {
@@ -164,3 +176,10 @@ export const simulateShopOrder = (orderId, customerId, action) =>
 
 // ── Customer confirmation of proposed resolutions ──
 export const confirmProposal = (payload) => request('/complaints/confirm', { method: 'POST', body: JSON.stringify(payload) });
+
+// ── Customer accounts ──
+export const getAuthConfig = () => request('/auth/config');
+export const authSignup = (payload) => request('/auth/signup', { method: 'POST', body: JSON.stringify(payload) });
+export const authLogin = (payload) => request('/auth/login', { method: 'POST', body: JSON.stringify(payload) });
+export const authMe = () => request('/auth/me');
+export const authLogout = () => request('/auth/logout', { method: 'POST' });

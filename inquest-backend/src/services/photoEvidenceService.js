@@ -12,27 +12,35 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_image_hashes_hash ON image_hashes(hash);
 `);
+if (!db.prepare('PRAGMA table_info(image_hashes)').all().some((c) => c.name === 'complaintId')) {
+  db.exec('ALTER TABLE image_hashes ADD COLUMN complaintId TEXT');
+}
 
-const findHash = db.prepare('SELECT customerId, orderId FROM image_hashes WHERE hash=? ORDER BY id ASC LIMIT 1');
-const insertHash = db.prepare('INSERT INTO image_hashes (hash, customerId, orderId, ts) VALUES (?,?,?,?)');
+const rowsForHash = db.prepare('SELECT customerId, orderId, complaintId FROM image_hashes WHERE hash=? ORDER BY id ASC');
+const insertHash = db.prepare('INSERT INTO image_hashes (hash, customerId, orderId, ts, complaintId) VALUES (?,?,?,?,?)');
 const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
 
-// Backend EVIDENCE: has this exact image ever been submitted before?
-const checkAndRegister = db.transaction((files, customerId, orderId) => {
-  const seenInThisRequest = new Set();
+// Backend EVIDENCE: has this exact image been submitted before (for another complaint)?
+// Re-investigating the same complaint never counts as reuse.
+const checkAndRegister = db.transaction((files, customerId, orderId, complaintId) => {
+  const seen = new Set();
   const out = [];
+  const cid = complaintId === null || complaintId === undefined ? null : String(complaintId);
   for (const f of files) {
     const hash = sha256(f.buffer);
-    if (seenInThisRequest.has(hash)) continue;
-    seenInThisRequest.add(hash);
-    const prior = findHash.get(hash);
-    if (prior) {
+    if (seen.has(hash)) continue;
+    seen.add(hash);
+    const rows = rowsForHash.all(hash);
+    const own = cid !== null && rows.some((r) => String(r.complaintId) === cid);
+    const others = rows.filter((r) => !(cid !== null && String(r.complaintId) === cid));
+    if (others.length) {
+      const prior = others[0];
       let detail = 'this exact photo was already submitted earlier for this order';
       if (prior.customerId !== customerId) detail = 'this exact photo was previously submitted by a different account';
       else if (prior.orderId && orderId && prior.orderId !== orderId) detail = `this exact photo was previously submitted for a different order (${prior.orderId})`;
       out.push({ hash, reused: true, detail });
     } else {
-      insertHash.run(hash, customerId, orderId || null, new Date().toISOString());
+      if (!own) insertHash.run(hash, customerId, orderId || null, new Date().toISOString(), cid);
       out.push({ hash, reused: false, detail: null });
     }
   }
@@ -77,8 +85,8 @@ Return ONLY this JSON, nothing else:
   };
 }
 
-async function assessPhotos({ files, customerId, order, complaintText }) {
-  const hashes = checkAndRegister(files, customerId, order ? order.id : null);
+async function assessPhotos({ files, customerId, order, complaintText, complaintId = null }) {
+  const hashes = checkAndRegister(files, customerId, order ? order.id : null, complaintId);
   const hit = hashes.find((h) => h.reused);
   const result = {
     provided: files.length,
@@ -88,7 +96,7 @@ async function assessPhotos({ files, customerId, order, complaintText }) {
     vision: null,
     error: null,
   };
-  if (hit || !order) return result; // no point paying for vision on reused photo / unverified order
+  if (hit || !order) return result;
   try {
     result.vision = await analyzeWithVision(files, complaintText, order);
     result.analyzed = true;

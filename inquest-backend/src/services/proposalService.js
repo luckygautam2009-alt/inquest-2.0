@@ -119,6 +119,8 @@ function respond({ auditId, customerId, choice }) {
     evidence: { originalDecision: 'CUSTOMER_CONFIRM', choice },
     actions: changes,
   });
+  require('./eventNotifier').notifyCaseUpdate(auditId, 'CUSTOMER_RESPONSE');
+  try { require('./complaintService').onProposalAnswered(auditId); } catch (e) { console.error('[proposal] complaint sync failed:', e.message); }
   return { status: 200, message, changes };
 }
 

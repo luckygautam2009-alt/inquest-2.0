@@ -36,7 +36,7 @@ function getAnalytics() {
       imageReuseHits: withPhoto.filter((r) => r.evidence.photo.reuse && r.evidence.photo.reuse.detected).length,
     },
     actions: { refundsInitiated: refunds.n, refundValueInr: refunds.total, refundsCancelledByOverride: cancelled },
-    overrides: { total: overrides.length, undo: undone, escalate: overrides.length - undone, undoRateOfAutoResolvePct: pct(undone, auto) },
+    overrides: { total: overrides.length, undo: undone, escalate: overrides.filter((r) => r.decision === 'OVERRIDE_ESCALATE').length, resolved: overrides.filter((r) => r.decision === 'OVERRIDE_RESOLVE').length, undoRateOfAutoResolvePct: pct(undone, auto) },
     byPolicy,
     suspiciousCustomers: listRisk().filter((c) => c.score >= 30).slice(0, 5)
       .map((c) => ({ customerId: c.customerId, name: c.name, score: c.score, level: c.level })),

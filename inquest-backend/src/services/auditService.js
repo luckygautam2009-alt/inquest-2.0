@@ -60,7 +60,7 @@ const append = db.transaction((entry) => {
   return Number(insertStmt.run(row).lastInsertRowid);
 });
 
-function logDecision({ customerId, complaintText, analysis, rootCause, decision, investigation, actions, risk, photo }) {
+function logDecision({ customerId, complaintText, analysis, rootCause, decision, investigation, actions, risk, photo, extra }) {
   try {
     return append({
       customerId,
@@ -83,6 +83,7 @@ function logDecision({ customerId, complaintText, analysis, rootCause, decision,
         refunds: (investigation?.focusRefunds || []).map((r) => ({
           id: r.id, amount: r.amount, status: r.status,
         })),
+        ...(extra || {}),
       },
       actions: actions || null,
     });

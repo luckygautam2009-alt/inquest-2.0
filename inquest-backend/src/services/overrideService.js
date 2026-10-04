@@ -1,15 +1,23 @@
 const db = require('../db/connection');
 const audit = require('./auditService');
-const { createTicket } = require('./actionExecutor');
+const caseService = require('./caseService');
+const { createTicket, createRefund } = require('./actionExecutor');
+const { notifyCaseUpdate } = require('./eventNotifier');
 
-function applyOverride({ auditId, type, reason, actorName, actorEmail }) {
+const DECISION_NAME = { UNDO: 'OVERRIDE_UNDO', ESCALATE: 'OVERRIDE_ESCALATE', RESOLVE: 'OVERRIDE_RESOLVE' };
+
+function applyOverride({ auditId, type, reason, actorName, actorEmail, resolution, amount, customerMessage }) {
   const entry = audit.get(auditId);
   if (!entry) return { status: 404, error: 'Audit entry not found' };
   if (entry.entryType !== 'DECISION') return { status: 400, error: 'Only AI decision entries can be overridden' };
-  if (audit.overridesFor(auditId).length > 0) return { status: 409, error: 'This decision was already overridden' };
+
+  const existing = db.prepare("SELECT decision FROM audit_log WHERE entryType='OVERRIDE' AND refId=?").all(auditId).map((r) => r.decision);
+  if (existing.includes('OVERRIDE_RESOLVE')) return { status: 409, error: 'This case was already resolved by staff' };
+  const decisionName = DECISION_NAME[type];
+  if (existing.includes(decisionName)) return { status: 409, error: 'This decision was already overridden' };
 
   const actions = entry.actions || {};
-  const changes = { refundCancelled: null, ticketReopened: null, ticketCreated: null };
+  const changes = { refundCancelled: null, ticketReopened: null, ticketCreated: null, refund: null, ticket: null };
   const now = new Date().toISOString();
   let failure = null;
 
@@ -29,13 +37,34 @@ function applyOverride({ auditId, type, reason, actorName, actorEmail }) {
           .run(` | Reopened by admin override (audit #${auditId})`, actions.ticket.id);
         changes.ticketReopened = actions.ticket.id;
       }
-    } else {
+    } else if (type === 'ESCALATE') {
       const t = createTicket({
         customerId: entry.customerId, category: 'general', status: 'open',
         subject: `Admin escalation: audit #${auditId}`,
         notes: `Escalated by ${actorName} (${actorEmail}). Reason: ${reason}`,
       });
       changes.ticketCreated = t.id;
+    } else {
+      const c = caseService.getCase(auditId);
+      if (!c || !['needs_attention', 'pending_confirmation'].includes(c.status)) { failure = { status: 409, error: 'Only cases that need attention can be resolved' }; return; }
+      if (resolution === 'REFUND') {
+        const orderId = entry.evidence && entry.evidence.orderId;
+        const order = orderId ? db.prepare('SELECT * FROM orders WHERE id=? AND customerId=?').get(orderId, entry.customerId) : null;
+        if (!order) { failure = { status: 409, error: 'This case has no verified order, so a refund cannot be issued. Close it without a refund instead.' }; return; }
+        const amt = amount === undefined || amount === null || amount === '' ? order.amount : Number(amount);
+        if (!(amt > 0) || amt > order.amount) { failure = { status: 400, error: `Refund amount must be between 1 and ${order.amount}` }; return; }
+        const already = db.prepare("SELECT COALESCE(SUM(amount),0) AS total FROM refunds WHERE orderId=? AND customerId=? AND status != 'cancelled'").get(order.id, entry.customerId).total;
+        if (already + amt > order.amount) { failure = { status: 409, error: `Refunds on this order (${already} already issued) would exceed its value of ${order.amount}` }; return; }
+        const r = createRefund({ orderId: order.id, customerId: entry.customerId, amount: amt, reason: `Refund approved by staff (case #${auditId})`, gatewayRef: null });
+        changes.refund = { id: r.id, amount: r.amount, status: r.status };
+      }
+      const t = createTicket({
+        customerId: entry.customerId, category: 'general', status: 'resolved',
+        subject: `Resolved by staff: case #${auditId}`,
+        resolution: changes.refund ? `Refund ${changes.refund.id} of INR ${changes.refund.amount} approved` : 'Closed without a refund',
+        notes: `By ${actorName} (${actorEmail}). ${reason}`,
+      });
+      changes.ticket = { id: t.id, status: t.status };
     }
   })();
 
@@ -49,11 +78,12 @@ function applyOverride({ auditId, type, reason, actorName, actorEmail }) {
     complaintText: entry.complaintText,
     intent: entry.intent,
     matchedPolicy: entry.matchedPolicy,
-    decision: type === 'UNDO' ? 'OVERRIDE_UNDO' : 'OVERRIDE_ESCALATE',
+    decision: decisionName,
     reasoning: reason,
-    evidence: { originalDecision: entry.decision },
+    evidence: { originalDecision: entry.decision, resolution: resolution || null, customerMessage: customerMessage || null },
     actions: changes,
   });
+  notifyCaseUpdate(auditId, decisionName);
   return { status: 200, overrideAuditId, changes };
 }
 
