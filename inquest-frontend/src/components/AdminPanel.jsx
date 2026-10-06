@@ -1,3 +1,7 @@
+import ComplaintsView from './admin/ComplaintsView';
+import { createAdminSession, adminCheck, getAdminComplaints } from '../api/client';
+import { saveAdminSession, getAdminSession, clearAdminSession } from '../auth/adminSession';
+import { goTo } from '../auth/nav';
 import { useState, useEffect } from 'react';
 import {
   X,
@@ -52,7 +56,7 @@ export default function AdminPanel({ onClose }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [verifyResult, setVerifyResult] = useState(null);
-  const [activeTable, setActiveTable] = useState('customers');
+  const [activeTable, setActiveTable] = useState(() => new URLSearchParams(window.location.search).get('view') || 'complaints');
 
   // Top header search bar state (filters active table client-side across all columns)
   const [globalSearch, setGlobalSearch] = useState('');
@@ -60,6 +64,52 @@ export default function AdminPanel({ onClose }) {
   // Reference card update state (post-unlock)
   const [refFile, setRefFile] = useState(null);
   const [refMsg, setRefMsg] = useState(null);
+  const [attention, setAttention] = useState(0);
+
+  // Restore a still-valid admin session after a refresh or after leaving this page (no new login needed)
+  useEffect(() => {
+    const s = getAdminSession();
+    if (!s) return undefined;
+    let alive = true;
+    (async () => {
+      try {
+        setLoading(true);
+        await adminCheck();
+        const [overviewRes, profileRes] = await Promise.all([
+          getAdminOverview(''),
+          getOrCreateAdminProfile({ email: s.email, name: s.name, adminPassword: '' }).catch(() => null),
+        ]);
+        if (!alive) return;
+        setName(s.name);
+        setEmail(s.email);
+        setData(overviewRes.data);
+        if (profileRes && profileRes.profile) setAdminProfile(profileRes.profile);
+        setUnlocked(true);
+        const after = sessionStorage.getItem('inquest.afterAdminLogin');
+        if (after) { sessionStorage.removeItem('inquest.afterAdminLogin'); goTo(after); }
+      } catch (e) {
+        if (e.status === 401) clearAdminSession();
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  // Nav badge: complaints that need a human
+  useEffect(() => {
+    if (!unlocked) return undefined;
+    let alive = true;
+    const tick = async () => {
+      try {
+        const r = await getAdminComplaints({});
+        if (alive) setAttention(r.data.summary.pendingHumanReview);
+      } catch { /* ignore */ }
+    };
+    tick();
+    const t = setInterval(tick, 10000);
+    return () => { alive = false; clearInterval(t); };
+  }, [unlocked]);
 
   function handleStartScan(e) {
     e.preventDefault();
@@ -83,7 +133,15 @@ export default function AdminPanel({ onClose }) {
       if (profileRes.profile) {
         setAdminProfile(profileRes.profile);
       }
+      try {
+        const s = await createAdminSession({ adminPassword: password, employeeName: name, employeeEmail: email });
+        saveAdminSession(s.data);
+      } catch (e) {
+        console.error('Could not create the admin session:', e.message);
+      }
       setUnlocked(true);
+      const after = sessionStorage.getItem('inquest.afterAdminLogin');
+      if (after) { sessionStorage.removeItem('inquest.afterAdminLogin'); goTo(after); }
     } catch (err) {
       setError(err.message || 'Could not load admin data');
       setScanning(false);
@@ -273,11 +331,15 @@ export default function AdminPanel({ onClose }) {
             activeTable={activeTable}
             setActiveTable={setActiveTable}
             data={data}
+            badges={{ complaints: attention }}
+            onSignOut={() => { clearAdminSession(); setUnlocked(false); setData(null); setScanning(false); setPassword(''); }}
           />
 
           {/* Center Main Content Area */}
           <main className="flex-1 flex flex-col p-3.5 sm:p-4.5 overflow-y-auto min-w-0 bg-ink transition-colors">
-            {activeTable === 'analytics' ? (
+            {activeTable === 'complaints' ? (
+              <ComplaintsView />
+            ) : activeTable === 'analytics' ? (
               <AnalyticsView adminPassword={password} />
             ) : activeTable === 'auditlog' ? (
               <AuditLogView

@@ -4,7 +4,7 @@ const HIGH = Number(process.env.RISK_HIGH_THRESHOLD) || 60;
 const MEDIUM = 30;
 const DAY = 86400000;
 // Refunds caused by OUR errors (payment glitches, cancellations) are not customer-abuse signals
-const SYSTEM_REASON = /duplicate|reconciliation|cancel/i;
+const SYSTEM_REASON = /duplicate|reconciliation|cancel|shipping credit/i;
 const CLAIM_SUBJECT = /not received|not arrived|damag|wrong item|missing|torn|broken|defect/i;
 
 const daysAgo = (iso) => {

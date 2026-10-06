@@ -10,9 +10,11 @@ import {
   ShieldCheck,
   TrendingUp,
   FileText,
+  MessageSquare,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
+  { id: 'complaints', label: 'Complaints', icon: MessageSquare },
   { id: 'customers', label: 'Customers', icon: Users },
   { id: 'orders', label: 'Orders', icon: ShoppingBag },
   { id: 'payments', label: 'Payments', icon: CreditCard },
@@ -24,7 +26,7 @@ const NAV_ITEMS = [
   { id: 'auditlog', label: 'Audit Log (2.0)', icon: FileText },
 ];
 
-export default function LeftNav({ activeTable, setActiveTable, data }) {
+export default function LeftNav({ activeTable, setActiveTable, data, badges = {}, onSignOut }) {
   return (
     <aside className="w-56 xl:w-64 border-r border-border bg-ink-light flex flex-col justify-between shrink-0 p-3 select-none transition-colors">
       <div className="space-y-3">
@@ -41,7 +43,7 @@ export default function LeftNav({ activeTable, setActiveTable, data }) {
         <nav className="space-y-0.5">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
-            const count = data?.[item.id]?.length ?? 0;
+            const count = badges[item.id] ?? data?.[item.id]?.length ?? 0;
             const isActive = activeTable === item.id;
 
             return (
@@ -82,6 +84,11 @@ export default function LeftNav({ activeTable, setActiveTable, data }) {
 
       {/* ── Bottom Section: System Status & Security Badge ── */}
       <div className="space-y-2 pt-3 border-t border-border">
+        {onSignOut && (
+          <button type="button" onClick={onSignOut} className="w-full text-left text-[11px] font-semibold text-muted hover:text-paper px-2.5 py-1.5 rounded-lg hover:bg-ink-lighter cursor-pointer">
+            Sign out of admin
+          </button>
+        )}
         {/* System Online Card */}
         <div className="bg-ink-inset rounded-lg p-2.5 border border-border flex items-center gap-2.5">
           <div className="w-2 h-2 rounded-full bg-verified animate-pulse shrink-0" />

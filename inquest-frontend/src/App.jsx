@@ -10,6 +10,7 @@ import StoryPage from './pages/StoryPage';
 import StorePage from './pages/StorePage';
 import AuthPage from './pages/AuthPage';
 import GatePage from './pages/GatePage';
+import ComplaintWorkspacePage from './pages/ComplaintWorkspacePage';
 import { goTo } from './auth/nav';
 import { Scale, Activity, ChevronRight, Sun, Moon, ShieldCheck, Sparkles, ArrowLeft } from 'lucide-react';
 import logoMark from './assets/logo-mark.png';
@@ -31,6 +32,13 @@ export default function App() {
 
   if (route === '/') {
     return <GatePage />;
+  }
+
+  if (route.startsWith('/admin/complaints/')) {
+    const complaintId = Number(route.split('/')[3]);
+    return Number.isInteger(complaintId) && complaintId > 0
+      ? <ComplaintWorkspacePage key={complaintId} complaintId={complaintId} />
+      : <div className="min-h-screen bg-ink text-paper flex items-center justify-center text-sm">Invalid complaint link.</div>;
   }
 
   if (route === '/admin') {

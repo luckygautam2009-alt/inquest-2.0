@@ -6,6 +6,33 @@ INQUEST is an AI-powered complaint resolution system where every customer compla
 
 ---
 
+##  Vision
+
+To become the most intelligent, automated, and seamless complaint resolution platform that bridges the gap between AI-driven investigation and human expertise. INQUEST aims to drastically reduce manual handling time, ensure consistent investigative rigor, and provide customers with clear, timely resolutions — while empowering human agents with full context when intervention is needed.
+
+---
+
+##  Features
+
+- **Autonomous Investigation**: AI-powered analysis of complaints against orders, payments, tickets, and return policies
+- **Auto-Resolution**: Smart auto-resolution of straightforward complaints based on evidence
+- **Customer Confirmation Flow**: Controlled handoff requiring customer confirmation for partial or uncertain resolutions
+- **Escalation to Humans**: Intelligent escalation to human agents with full contextual intelligence when needed
+- **Persistent Notifications**: System notifications that persist until acknowledged, ensuring no inquiry is missed
+- **Image Validation**: Automatic image analysis and damage assessment for relevant complaints
+- **Customer Account Management**: Secure signup, login, and session management with customer ID bound to authentication tokens
+- **Admin Dashboard**: Full-featured admin panel for monitoring investigations, overriding decisions, and managing cases
+- **Audit Logging**: Comprehensive audit trails for all complaint actions, customer responses, and decision flows
+- **Risk Engine**: Automated risk assessment for each complaint based on multiple factors
+- **Root Cause Engine**: Deep analysis to identify root causes behind complaints
+- **Decision Engine**: Centralized decision-making pipeline that determines the best resolution path
+- **Investigation Runner**: Automated investigation execution with gated flows and needs-information requests
+- **CORS & Security**: Secure origin validation and rate limiting to protect the API
+- **Rate Limiting**: Configurable rate limiting to prevent API abuse
+- **Spa Redirects**: Single-page application routing support for seamless frontend navigation
+
+---
+
 ##  Project Architecture
 
 ```

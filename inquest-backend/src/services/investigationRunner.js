@@ -14,6 +14,14 @@ const ORDER_INTENTS = ['payment/billing', 'payment', 'cancellation', 'refund/ret
 
 // When the only blocker is MISSING information the customer can supply, ask for it instead of burdening a human
 function refineDecision({ decision, analysis, rootCause, investigation, photo }) {
+  // The customer never named an order and the engine only guessed one: ask, do not act on a guess
+  if (!investigation.orderHintDetected && investigation.focusOrder && ['AUTO_RESOLVE', 'CUSTOMER_CONFIRM'].includes(decision.decision) && ORDER_INTENTS.includes(analysis.intent)) {
+    return {
+      ...decision, decision: 'NEEDS_INFO',
+      reasoning: `The complaint did not name an order. The closest match is ${investigation.focusOrder.id}, but nothing is resolved on a guess.`,
+      infoRequest: `We could not tell which order you mean. Please reply with the order ID (for example ${investigation.focusOrder.id}) so we can check the right one.`,
+    };
+  }
   if (decision.decision !== 'HUMAN_ESCALATION') return decision;
   const noOrderMentioned = !investigation.focusOrder && !investigation.orderMismatch && !investigation.orderHintDetected;
   if (noOrderMentioned && (ORDER_INTENTS.includes(analysis.intent) || analysis.intent === 'other/ambiguous')) {

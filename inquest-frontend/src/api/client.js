@@ -1,3 +1,4 @@
+import { getAdminToken } from '../auth/adminSession';
 import { getToken } from '../auth/tokenStore';
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -8,10 +9,14 @@ async function request(path, options = {}) {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(getAdminToken() ? { 'X-Admin-Token': getAdminToken() } : {}),
       ...(options.headers || {}),
     },
   });
   const data = await res.json();
+  if (res.status === 401 && path.startsWith('/admin') && getAdminToken()) {
+    window.dispatchEvent(new Event('inquest:admin-expired'));
+  }
   if (res.status === 401 && token && !path.startsWith('/admin') && !path.startsWith('/auth/login') && !path.startsWith('/auth/signup')) {
     window.dispatchEvent(new Event('inquest:auth-expired'));
   }
@@ -214,3 +219,12 @@ export async function registerComplaint({ orderId, complaintText, issueKey, phot
     clearTimeout(timer);
   }
 }
+
+// ── Admin: session, complaints, automation ──
+export const createAdminSession = (payload) => request('/admin/session', { method: 'POST', body: JSON.stringify(payload) });
+export const adminCheck = () => request('/admin/settings', { method: 'POST', body: '{}' });
+export const setAutoMode = (autoInvestigate) => request('/admin/settings', { method: 'POST', body: JSON.stringify(typeof autoInvestigate === 'boolean' ? { autoInvestigate } : {}) });
+export const getAdminComplaints = ({ status, search } = {}) => request('/admin/complaints', { method: 'POST', body: JSON.stringify({ status, search }) });
+export const getAdminComplaintDetail = (complaintId) => request('/admin/complaints/detail', { method: 'POST', body: JSON.stringify({ complaintId }) });
+export const investigateAdminComplaint = (complaintId, force = false) => request('/admin/complaints/investigate', { method: 'POST', body: JSON.stringify({ complaintId, force }) });
+export const resolveAdminComplaint = (payload) => request('/admin/complaints/resolve', { method: 'POST', body: JSON.stringify(payload) });

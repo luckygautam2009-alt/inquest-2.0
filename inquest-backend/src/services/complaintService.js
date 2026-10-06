@@ -210,7 +210,7 @@ function recoverStuck() {
 setTimeout(recoverStuck, 3000);
 
 // ---------- admin ----------
-const GROUPS = { attention: ['human_review', 'investigated'], waiting: ['needs_info', 'awaiting_customer'] };
+const GROUPS = { new: ['registered', 'investigating'], attention: ['human_review', 'investigated'], waiting: ['needs_info', 'awaiting_customer'] };
 
 function listForAdmin({ status, search } = {}) {
   const all = db.prepare(`
